@@ -28,7 +28,7 @@ class Ingredient(CookbookEntry):
 app = Flask(__name__)
 
 # Store your recipes here!
-cookbook = None
+cookbook = {}
 
 # Task 1 helper (don't touch)
 @app.route("/parse", methods=['POST'])
@@ -56,9 +56,47 @@ def parse_handwriting(recipeName: str) -> Union[str | None]:
 # Endpoint that adds a CookbookEntry to your magical cookbook
 @app.route('/entry', methods=['POST'])
 def create_entry():
-	# TODO: implement me
-	return 'not implemented', 500
+	# Create and add more entries to cookbook
+	# Implement endpoint and store the cookbook entries. if successful, return HTTP 200 and empty response body
 
+	data = request.get_json()
+
+	type = data.get('type')
+	name = data.get('name')
+
+	if name in cookbook:
+		return 'Error: entry already exists! (entry names must be unique)', 400
+	
+	if type == 'recipe':
+		visited_items = set() # set as by storing strings instead of obj, that way can check for duplicate strings
+		approved_items = [] # list as final required_items is type List
+
+		items = data.get('requiredItems', [])
+
+		for item in items:
+			item_name = item.get('name')
+			item_quantity = item.get('quantity')
+
+			if item_name in visited_items:
+				return 'Error: duplicated required item in recipe!', 400
+			
+			visited_items.add(item_name)
+			approved_items.append(RequiredItem(name = item_name, quantity = item_quantity))
+		
+		new_entry = Recipe(name = name, required_items = approved_items)
+	elif type == 'ingredient':
+		cook_time = data.get('cookTime')
+		
+		if cook_time < 0:
+			return 'Error: invalid cook time! (cook time >= 0)', 400
+		
+		new_entry = Ingredient(name = name, cook_time = cook_time)
+	else:
+		return 'Error: invalid type! (not recipe or ingredient)', 400
+	
+	cookbook[name] = new_entry
+	
+	return jsonify({}), 200
 
 # [TASK 3] ====================================================================
 # Endpoint that returns a summary of a recipe that corresponds to a query name
