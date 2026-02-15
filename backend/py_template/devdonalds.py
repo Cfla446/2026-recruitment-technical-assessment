@@ -102,9 +102,70 @@ def create_entry():
 # Endpoint that returns a summary of a recipe that corresponds to a query name
 @app.route('/summary', methods=['GET'])
 def summary():
-	# TODO: implement me
-	return 'not implemented', 500
+	# return summary given name, HTTP GET endpoint
+	# return name(str), cookTime(int), ingredients(RequiredItems[])
+	# 
+	# status 400 return
+		# recipe contains recipes or ingredients that arent in the cookbook
+	# data = request.get_json()
+	# name = data.get('name')
+	name = request.args.get('name')
+	if name not in cookbook or not isinstance(cookbook[name], Recipe):
+		return 'Error: name not found or is not a recipe!', 400
+	
+	# Recursion - must store accumulated cook time across the frames
+	total_cook_time = 0
+	final_ingredients_list = {} # running tally of added base items to stop duplicates
 
+	def resolve_item(name, multiplier):
+		nonlocal total_cook_time # nested function, inner one can read variables from outer but cant modify
+								# so cant directly add to total_cook_time so instead create a brand new local one
+								# nonlcoal tells python dont create a new variable, but use the one that belongs to outer function
+		if name not in cookbook:
+			raise ValueError("Missing item in cookbook") # stops recursion instantly and throws error
+		
+		entry = cookbook[name]
+
+		if isinstance(entry, Ingredient):
+			total_cook_time += entry.cook_time * multiplier
+			final_ingredients_list[name] = final_ingredients_list.get(name, 0) + multiplier
+
+		elif isinstance(entry, Recipe):
+			for item in entry.required_items:
+				resolve_item(item.name, multiplier * item.quantity)
+
+	try: # for ValueError case
+		recipe = cookbook[name]
+		for fin_item in recipe.required_items:
+			resolve_item(fin_item.name, fin_item.quantity)
+	except ValueError:
+		return 'Recipe contains unknown items', 400
+	
+	ingredients_list = [
+		{"name": item_name, "quantity": item_quantity}
+		for item_name, item_quantity in final_ingredients_list.items()
+	]
+
+	return jsonify({
+		"name": name,
+		"cookTime": total_cook_time,
+		"ingredients": ingredients_list
+	}), 200
+	
+	
+	
+	
+	
+	
+	
+	# read the recipe line by line and check if not in cookbook or instanceof recipe
+	# for int i = 0; i < len(requiredItems); i++:
+	# 	if requiredItems[i].name not instanceof Recipe or not __doc__:
+			
+	# Ingredients and recipes made of ingredients or other recipes
+	# If we find other recipes within, we need to access their ingredients etc...
+	# This becomes a tree, so if we need to access something that contains smaller value sof itself with shared logic
+	# This means we must do recursion
 
 # =============================================================================
 # ==== DO NOT TOUCH ===========================================================
