@@ -26,7 +26,7 @@ const app = express();
 app.use(express.json());
 
 // Store your recipes here!
-const cookbook: any = null;
+const cookbook: Record<string, recipe | ingredient> = {};
 
 // Task 1 helper (don't touch)
 app.post("/parse", (req:Request, res:Response) => {
@@ -63,8 +63,61 @@ const parse_handwriting = (recipeName: string): string | null => {
 // [TASK 2] ====================================================================
 // Endpoint that adds a CookbookEntry to your magical cookbook
 app.post("/entry", (req:Request, res:Response) => {
-  // TODO: implement me
-  res.status(500).send("not yet implemented!")
+  const data = req.body();
+
+	const type: string = data.type;
+	const name: string = data.name;
+  let new_entry: recipe | ingredient;
+
+	if (name in cookbook) {
+    return res.status(400).send("Error: entry already exists! (entry names must be unique)");
+  }
+	
+	if (type == "recipe") {
+    const visited_items = new Set<string>();
+    const approved_items: requiredItem[] = [];
+
+    const items: any[] = data.requiredItems ?? [];
+
+		for (const item of items) {
+      const item_name: string = item.name;
+      const item_quantity: number = item.quantity;
+      if (visited_items.has(item_name)) {
+        return res.status(400).send("Error: duplicated required item in recipe!");
+      }
+
+      visited_items.add(item_name);
+      approved_items.push({
+        name: item_name,
+        quantity: item_quantity
+      });
+    }
+
+    new_entry = {
+      name: name,
+      type: "recipe",
+      requiredItems: approved_items
+    };
+  } else if (type == "ingredient") {
+    const cook_time: number = data.cookTime;
+		
+		if (cook_time < 0) {
+      return res.status(400).send("Error: invalid cook time! (cook time >= 0)");
+    }
+		
+		new_entry = {
+      name: name,
+      type: "ingredient",
+      cookTime: cook_time
+    };
+
+  } else {
+    return res.status(400).send("Error: invalid type! (not recipe or ingredient)");
+  }
+	
+	cookbook[name] = new_entry;
+	
+	return res.status(200).json({});
 
 });
 
