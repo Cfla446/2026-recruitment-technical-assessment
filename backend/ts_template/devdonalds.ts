@@ -45,8 +45,7 @@ app.post("/parse", (req:Request, res:Response) => {
 // [TASK 1] ====================================================================
 // Takes in a recipeName and returns it in a form that 
 const parse_handwriting = (recipeName: string): string | null => {
-  recipeName = recipeName.replace("_", " ").replace("-", " ");
-
+  recipeName = recipeName.replace(/[_-]/g, " ");
   // regex
   recipeName = recipeName.replace(/[^a-zA-Z\s]/g, ""); // a-z, A-Z, or space (\s) with empty string
 
@@ -63,7 +62,7 @@ const parse_handwriting = (recipeName: string): string | null => {
 // [TASK 2] ====================================================================
 // Endpoint that adds a CookbookEntry to your magical cookbook
 app.post("/entry", (req:Request, res:Response) => {
-  const data = req.body();
+  const data = req.body;
 
 	const type: string = data.type;
 	const name: string = data.name;
@@ -124,9 +123,55 @@ app.post("/entry", (req:Request, res:Response) => {
 // [TASK 3] ====================================================================
 // Endpoint that returns a summary of a recipe that corresponds to a query name
 app.get("/summary", (req:Request, res:Request) => {
-  // TODO: implement me
-  res.status(500).send("not yet implemented!")
+  const name: string = req.query.name as string;
+  if (!(name in cookbook) || cookbook[name].type !== "recipe") {
+    return res.status(400).send("Error: name not found or is not a recipe!");
+  }
 
+  let total_cook_time: number = 0;
+  const final_ingredients_list: Record<string, number> = {};
+
+	function resolve_item(name: string, frequency: number): void {
+    if (!(name in cookbook)) {
+      throw new Error("Missing item in cookbook");
+    }
+
+    const entry = cookbook[name];
+
+    if (entry.type === "ingredient") {
+      const ingredient = entry as ingredient;
+      total_cook_time += ingredient.cookTime * frequency;
+      final_ingredients_list[name] = (final_ingredients_list[name] ?? 0) + frequency;
+    } else if (entry.type === "recipe") {
+      const recipe = entry as recipe;
+      for (const item of recipe.requiredItems) {
+        resolve_item(item.name, frequency * item.quantity);
+      }
+    }
+  }
+
+  try {
+    const recipe = cookbook[name] as recipe;
+
+    for (const fin_item of recipe.requiredItems) {
+      resolve_item(fin_item.name, fin_item.quantity);
+    }
+  } catch (err) {
+    return res.status(400).send("Recipe contains unknown items");
+  }
+
+  const ingredients_list = Object.entries(final_ingredients_list).map(
+    ([item_name, item_quantity]) => ({
+    name: item_name,
+    quantity: item_quantity
+    })
+  );
+
+  return res.status(200).json({
+    name: name,
+    cookTime: total_cook_time,
+    ingredients: ingredients_list,
+  });
 });
 
 // =============================================================================
