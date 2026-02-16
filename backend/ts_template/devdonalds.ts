@@ -122,7 +122,7 @@ app.post("/entry", (req:Request, res:Response) => {
 
 // [TASK 3] ====================================================================
 // Endpoint that returns a summary of a recipe that corresponds to a query name
-app.get("/summary", (req:Request, res:Request) => {
+app.get("/summary", (req:Request, res:Response) => {
   const name: string = req.query.name as string;
   if (!(name in cookbook) || cookbook[name].type !== "recipe") {
     return res.status(400).send("Error: name not found or is not a recipe!");
