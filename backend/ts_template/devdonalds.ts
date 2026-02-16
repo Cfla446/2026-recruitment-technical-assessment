@@ -45,8 +45,19 @@ app.post("/parse", (req:Request, res:Response) => {
 // [TASK 1] ====================================================================
 // Takes in a recipeName and returns it in a form that 
 const parse_handwriting = (recipeName: string): string | null => {
-  // TODO: implement me
-  return recipeName
+  recipeName = recipeName.replace("_", " ").replace("-", " ");
+
+  // regex
+  recipeName = recipeName.replace(/[^a-zA-Z\s]/g, ""); // a-z, A-Z, or space (\s) with empty string
+
+	const words: string[] = recipeName.trim().split(/\s+/);
+
+	if (words == null) {
+    return null;
+	
+  }
+
+  return words.map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()).join(" ");
 }
 
 // [TASK 2] ====================================================================
